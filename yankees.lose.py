@@ -1,102 +1,158 @@
-import requests
-from datetime import datetime
-from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
+from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip, ImageClip
+from PIL import Image
+import numpy as np
 import os
+from datetime import datetime
+import requests
 
-def get_yankees_game_result():
-    test_date = datetime(2025, 4, 8)  # Fixed test date
-    date_str = test_date.strftime('%Y-%m-%d')
+# Function to resize image using Pillow before passing to ImageClip
+def resize_logo(image_path, height):
+    img = Image.open(image_path)
+    img = img.convert("RGBA")  # Ensure the image is in RGB format
+    aspect_ratio = img.width / img.height
+    new_width = int(height * aspect_ratio)
+    resized_img = img.resize((new_width, height), Image.Resampling.LANCZOS)
+    return np.array(resized_img)
 
-    url = f"https://statsapi.mlb.com/api/v1/schedule?sportId=1&date={date_str}&teamId=147"  # 147 = Yankees
-    res = requests.get(url).json()
+# Fetch game data from MLB API
+def fetch_yankees_game_result(game_date_str):
+    base_url = "https://statsapi.mlb.com/api/v1/schedule"
+    params = {
+        "sportId": 1,
+        "date": game_date_str,
+        "teamId": 147,  # Yankees team ID
+    }
 
-    if res["totalGames"] == 0:
-        return None  # No game played
+    response = requests.get(base_url, params=params)
+    data = response.json()
 
-    game = res["dates"][0]["games"][0]
-    status = game["status"]["detailedState"]
-    is_final = "Final" in status
+    try:
+        game = data["dates"][0]["games"][0]
+        game_id = game["gamePk"]
 
-    if is_final:
-        teams = game["teams"]
-        yanks_score = teams["away"]["score"] if teams["away"]["team"]["id"] == 147 else teams["home"]["score"]
-        opp_score = teams["home"]["score"] if teams["away"]["team"]["id"] == 147 else teams["away"]["score"]
-        result = "loss" if yanks_score < opp_score else "win"
+        # Fetch boxscore for the game
+        boxscore_url = f"https://statsapi.mlb.com/api/v1/game/{game_id}/boxscore"
+        boxscore_response = requests.get(boxscore_url)
+        boxscore_data = boxscore_response.json()
 
-        return {
-            "result": result,
-            "opponent": teams["home"]["team"]["name"] if teams["away"]["team"]["id"] == 147 else teams["away"]["team"]["name"],
-            "yankees_score": yanks_score,
-            "opponent_score": opp_score,
+        teams = boxscore_data["teams"]
+        yankees = teams["away"] if teams["away"]["team"]["id"] == 147 else teams["home"]
+        opponent = teams["home"] if yankees == teams["away"] else teams["away"]
+
+        result = {
+            "result": "loss" if yankees["teamStats"]["batting"]["runs"] < opponent["teamStats"]["batting"]["runs"] else "win",
+            "opponent": opponent["team"]["name"],
+            "yankees_score": yankees["teamStats"]["batting"]["runs"],
+            "opponent_score": opponent["teamStats"]["batting"]["runs"],
             "game_date": game["gameDate"]
         }
 
-    return None
+        return result
+    except (IndexError, KeyError):
+        print("⚠️ Could not find Yankees game for that date.")
+        return None
 
+# Create the final video
 def create_video_with_score(result):
-    # Load the original video
     video_path = "/Users/dannyholman/Desktop/Yankees.Lose/da_jankees_lose.mp4"
     video_clip = VideoFileClip(video_path)
-
-    # Extract the audio from the original video
     audio_clip = video_clip.audio
 
-    # Format the game date
+    # Format date
     game_date = datetime.strptime(result["game_date"], "%Y-%m-%dT%H:%M:%SZ").strftime("%B %d, %Y")
 
-    # --- SCORE TEXT CLIP ---
+    # Score text
     score_text = f"{result['yankees_score']} - {result['opponent_score']}"
-    score_txt_clip = TextClip(
-        score_text,
-        fontsize=100,
-        color='white',
-        font="Comic-Sans-MS"  # Or try "Impact", "Futura", or any installed font
-    )
-    score_txt_clip = score_txt_clip.on_color(
-        size=(score_txt_clip.w + 60, score_txt_clip.h + 30),
+    raw_score_txt = TextClip(score_text, fontsize=70, color='white', font="Comic-Sans-MS")
+    score_txt_clip = raw_score_txt.on_color(
+        size=(raw_score_txt.w + 60, raw_score_txt.h + 30),
         color=(0, 0, 0),
         col_opacity=0.6
-    )
-    score_txt_clip = score_txt_clip.set_position(('center', 'center')).set_duration(video_clip.duration)
+    ).set_position(('center', 'center')).set_duration(video_clip.duration)
 
-    # --- DATE TEXT CLIP ---
-    date_text = f"Game Date: {game_date}"
-    date_txt_clip = TextClip(
-        date_text,
-        fontsize=30,
-        color='white',
-        font="Arial"
-    )
-    date_txt_clip = date_txt_clip.on_color(
-        size=(date_txt_clip.w + 40, date_txt_clip.h + 20),
+    # Date text
+    raw_date_txt = TextClip(game_date, fontsize=30, color='white', font="Arial")
+    date_txt_clip = raw_date_txt.on_color(
+        size=(raw_date_txt.w + 40, raw_date_txt.h + 20),
         color=(0, 0, 0),
         col_opacity=0.6
-    )
-    date_txt_clip = date_txt_clip.set_position(('center', video_clip.h - 100)).set_duration(video_clip.duration)
+    ).set_position(('center', video_clip.h - 100)).set_duration(video_clip.duration)
 
-    # Combine all layers
-    final_clip = CompositeVideoClip([video_clip, score_txt_clip, date_txt_clip])
+    # Logos
+    yankees_logo_path = "/Users/dannyholman/Desktop/Yankees.Lose/logos/yankees.png"
+    yankees_logo_resized = resize_logo(yankees_logo_path, 100)
+    yankees_logo = ImageClip(yankees_logo_resized).set_duration(video_clip.duration).set_position((40, 'center'))
 
-    # Set original audio
-    final_clip = final_clip.set_audio(audio_clip)
+    # Dynamic opponent logo path
+    opponent_team = result["opponent"]
+    team_logo_map = {
+        "Boston Red Sox": "boston.png",
+        "Detroit Tigers": "detroit.png",
+        "Toronto Blue Jays": "toronto.png",
+        "Tampa Bay Rays": "tampa_bay.png",
+        "Baltimore Orioles": "baltimore.png",
+        "New York Mets": "new_york.png",
+        "Chicago White Sox": "chicago_white.png",
+        "Chicago Cubs": "chicago_cubs.png",
+        "Los Angeles Dodgers": "los_angeles.png",
+        "San Francisco Giants": "san_francisco.png",
+        "Houston Astros": "houston.png",
+        "Cleveland Guardians": "cleveland.png",
+        "New York Yankees": "yankees.png",
+        "Los Angeles Angels": "los_angeles_angels.png",
+        "Miami Marlins": "miami.png",
+        "Milwaukee Brewers": "milwaukee.png",
+        "Minnesota Twins": "minnesota.png",
+        "Kansas City Royals": "kansas_city.png",
+        "Arizona Diamondbacks": "arizona.png",
+        "Atlanta Braves": "atlanta.png",
+        "Philadelphia Phillies": "philadelphia.png",
+        "Seattle Mariners": "seattle.png",
+        "St. Louis Cardinals": "st_louis.png",
+        "Oakland Athletics": "oakland.png",
+        "Washington Nationals": "washington.png",
+        "Pittsburgh Pirates": "pittsburgh.png",
+        "San Diego Padres": "san_diego.png",
+        "Texas Rangers": "texas.png",
+        "Cincinnati Reds": "cincinnati.png",
+        "Colorado Rockies": "colorado.png"
+    }
 
-    # Export final video
+    opponent_logo_file = team_logo_map.get(opponent_team, "default_logo.png")
+    opponent_logo_path = f"/Users/dannyholman/Desktop/Yankees.Lose/logos/{opponent_logo_file}"
+
+    if not os.path.exists(opponent_logo_path):
+        print(f"⚠️ Opponent logo not found: {opponent_logo_path}")
+        opponent_logo_path = "/Users/dannyholman/Desktop/Yankees.Lose/logos/default_logo.png"  # Fallback logo
+
+    opponent_logo_resized = resize_logo(opponent_logo_path, 100)
+    opponent_logo = ImageClip(opponent_logo_resized).set_duration(video_clip.duration)
+    opponent_logo = opponent_logo.set_position((video_clip.w - opponent_logo.w - 40, 'center'))
+
+    # Final composite
+    final_clip = CompositeVideoClip([
+        video_clip,
+        score_txt_clip,
+        date_txt_clip,
+        yankees_logo,
+        opponent_logo
+    ]).set_audio(audio_clip)
+
+    # Export
     output_path = "/Users/dannyholman/Desktop/Yankees.Lose/da_jankees_lose_with_score.mp4"
     final_clip.write_videofile(output_path, codec='libx264', audio_codec='aac')
 
     return output_path
 
-# Example usage
+# Run the script
 if __name__ == "__main__":
-    result = get_yankees_game_result()
-    if result and result["result"] == "loss":
-        print(f"The Yankees lost to {result['opponent']} {result['opponent_score']}–{result['yankees_score']}")
-        
-        # Create video with score overlay and preserve audio
-        video_with_score = create_video_with_score(result)
-        print(f"Video created at: {video_with_score}")
+    target_date = "2025-03-29"
+    result = fetch_yankees_game_result(target_date)
 
-        # Play video on macOS using the default video player
+    if result and result["result"] == "loss":
+        print(f"💀 The Yankees lost to {result['opponent']} {result['opponent_score']}–{result['yankees_score']}")
+        video_with_score = create_video_with_score(result)
+        print(f"🎬 Video created at: {video_with_score}")
         os.system(f"open '{video_with_score}'")
     else:
-        print("No Yankees loss detected.")
+        print("🎉 No Yankees loss detected or no game found.")
