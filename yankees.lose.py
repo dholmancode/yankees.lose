@@ -142,7 +142,7 @@ team_logo_map = {
 
 # Run script
 if __name__ == "__main__":
-    target_date = "2025-04-08"
+    target_date = "2024-10-17"
     result = fetch_yankees_game_result(target_date)
 
     if result and result["result"] == "loss":
