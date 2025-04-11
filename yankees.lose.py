@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import requests
 from instagrapi import Client
 from dotenv import load_dotenv
+from zoneinfo import ZoneInfo
 
 # Load environment variables
 load_dotenv()
@@ -88,7 +89,10 @@ def create_video_with_score(result):
     video_clip = VideoFileClip(video_path)
     audio_clip = video_clip.audio
 
-    game_date = datetime.strptime(result["game_date"], "%Y-%m-%dT%H:%M:%SZ").strftime("%B %d, %Y")
+    utc_dt = datetime.strptime(result["game_date"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=ZoneInfo("UTC"))
+    local_dt = utc_dt.astimezone(ZoneInfo("America/New_York"))
+    game_date = local_dt.strftime("%B %d, %Y")
+
     score_text = f"{result['yankees_score']} - {result['opponent_score']}"
 
     # Score text
@@ -182,4 +186,4 @@ if __name__ == "__main__":
             caption=f"Daaa Yankees Lose to the {result['opponent']} \nFinal Score: {result['yankees_score']}–{result['opponent_score']}"
         )
     else:
-        print("🎉 No Yankees loss detected or no game found.")
+        print("No Yankees loss detected or no game found.")
