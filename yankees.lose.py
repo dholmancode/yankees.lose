@@ -170,7 +170,7 @@ def upload_to_instagram(video_path, caption="Daaa Yankees Lose."):
 # Main logic
 if __name__ == "__main__":
     yesterday = datetime.now() - timedelta(days=1)
-    target_date = "2025-04-08"
+    target_date = yesterday.strftime("%Y-%m-%d")
     result = fetch_yankees_game_result(target_date)
 
     if result and result["result"] == "loss":
@@ -179,7 +179,7 @@ if __name__ == "__main__":
         print(f"🎬 Video created at: {video_with_score}")
         upload_to_instagram(
             video_with_score,
-            caption=f"Daaa Yankees Lose to the {result['opponent']} 🤡\nFinal Score: {result['yankees_score']}–{result['opponent_score']}"
+            caption=f"Daaa Yankees Lose to the {result['opponent']} \nFinal Score: {result['yankees_score']}–{result['opponent_score']}"
         )
     else:
         print("🎉 No Yankees loss detected or no game found.")
