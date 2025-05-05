@@ -1,0 +1,47 @@
+No Yankees loss detected or no game found.
+💀 The Yankees lost to San Francisco Giants 5–4
+Traceback (most recent call last):
+  File "/Users/dannyholman/Desktop/Yankees.Lose/venv/lib/python3.13/site-packages/moviepy/video/VideoClip.py", line 1137, in __init__
+    subprocess_call(cmd, logger=None)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/Users/dannyholman/Desktop/Yankees.Lose/venv/lib/python3.13/site-packages/moviepy/tools.py", line 46, in subprocess_call
+    proc = sp.Popen(cmd, **popen_params)
+  File "/opt/homebrew/Cellar/python@3.13/3.13.3/Frameworks/Python.framework/Versions/3.13/lib/python3.13/subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.3/Frameworks/Python.framework/Versions/3.13/lib/python3.13/subprocess.py", line 1969, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: 'unset'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/dannyholman/Desktop/Yankees.Lose/yankees.lose.py", line 182, in <module>
+    video_with_score = create_video_with_score(result)
+  File "/Users/dannyholman/Desktop/Yankees.Lose/yankees.lose.py", line 99, in create_video_with_score
+    raw_score_txt = TextClip(score_text,
+                             fontsize=60,
+    ...<2 lines>...
+                             stroke_color='black',
+                             stroke_width=1)
+  File "/Users/dannyholman/Desktop/Yankees.Lose/venv/lib/python3.13/site-packages/moviepy/video/VideoClip.py", line 1146, in __init__
+    raise IOError(error)
+OSError: MoviePy Error: creation of None failed because of the following error:
+
+[Errno 2] No such file or directory: 'unset'.
+
+.This error can be due to the fact that ImageMagick is not installed on your computer, or (for Windows users) that you didn't specify the path to the ImageMagick binary in file conf.py, or that the path you specified is incorrect
+No Yankees loss detected or no game found.
+No Yankees loss detected or no game found.
+No Yankees loss detected or no game found.
+⚠️ Could not find Yankees game for that date.
+No Yankees loss detected or no game found.
+No Yankees loss detected or no game found.
+No Yankees loss detected or no game found.

@@ -125,16 +125,16 @@ def create_video_with_score(result):
 
     # Logos
     yankees_logo_path = "/Users/dannyholman/Desktop/Yankees.Lose/logos/yankees.png"
-    yankees_logo_resized = resize_logo(yankees_logo_path, 100)
-    yankees_logo = ImageClip(yankees_logo_resized).set_duration(video_clip.duration).set_position((40, 'center'))
+    yankees_logo_resized = resize_logo(yankees_logo_path, 80)
+    yankees_logo = ImageClip(yankees_logo_resized).set_duration(video_clip.duration).set_position((90, 'center'))
 
     opponent_logo_file = team_logo_map.get(result["opponent"], "default_logo.png")
     opponent_logo_path = f"/Users/dannyholman/Desktop/Yankees.Lose/logos/{opponent_logo_file}"
     if not os.path.exists(opponent_logo_path):
         opponent_logo_path = "/Users/dannyholman/Desktop/Yankees.Lose/logos/default_logo.png"
 
-    opponent_logo_resized = resize_logo(opponent_logo_path, 100)
-    opponent_logo = ImageClip(opponent_logo_resized).set_duration(video_clip.duration).set_position((video_clip.w - 140, 'center'))
+    opponent_logo_resized = resize_logo(opponent_logo_path, 80)
+    opponent_logo = ImageClip(opponent_logo_resized).set_duration(video_clip.duration).set_position((video_clip.w - 190, 'center'))
 
     # Combine everything
     final_clip = CompositeVideoClip([
@@ -173,17 +173,24 @@ def upload_to_instagram(video_path, caption="Daaa Yankees Lose."):
 
 # Main logic
 if __name__ == "__main__":
-    yesterday = datetime.now() - timedelta(days=1)
-    target_date = yesterday.strftime("%Y-%m-%d")
-    result = fetch_yankees_game_result(target_date)
+    start_date = datetime(2025, 5, 5)
+    today = datetime.now()
 
-    if result and result["result"] == "loss":
-        print(f"💀 The Yankees lost to {result['opponent']} {result['opponent_score']}–{result['yankees_score']}")
-        video_with_score = create_video_with_score(result)
-        print(f"🎬 Video created at: {video_with_score}")
-        upload_to_instagram(
-            video_with_score,
-            caption=f"Daaa Yankees Lose to the {result['opponent']} \nFinal Score: {result['yankees_score']}–{result['opponent_score']}"
-        )
-    else:
-        print("No Yankees loss detected or no game found.")
+    current_date = start_date
+    while current_date <= today:
+        target_date = current_date.strftime("%Y-%m-%d")
+        print(f"📅 Checking game for {target_date}...")
+        result = fetch_yankees_game_result(target_date)
+
+        if result and result["result"] == "loss":
+            print(f"💀 The Yankees lost to {result['opponent']} {result['opponent_score']}–{result['yankees_score']} on {target_date}")
+            video_with_score = create_video_with_score(result)
+            print(f"🎬 Video created at: {video_with_score}")
+            upload_to_instagram(
+                video_with_score,
+                caption=f"Daaa Yankees Lose to the {result['opponent']} \nFinal Score: {result['yankees_score']}–{result['opponent_score']}"
+            )
+        else:
+            print("No Yankees loss detected or no game found.")
+
+        current_date += timedelta(days=1)
